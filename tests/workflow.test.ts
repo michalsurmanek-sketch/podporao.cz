@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {requestContext,database,env} from './runtime.mjs';
+import {requestContext,database,setTestCookie,getTestCookie} from './runtime.mjs';
 import {GET,POST,PATCH} from '../app/api/v1/[...path]/route';
 import {blank} from '../lib/shared';
 const origin='https://test.local';let checks=0;
@@ -41,4 +41,14 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  const notifications=await call('my','GET',undefined,'alice');assert.ok(notifications.data.notifications.length>0);assert.ok(notifications.data.notifications.every((n:any)=>n.status==='inactive'));
  assert.equal((await call('admin/audit','GET',undefined,'admin')).status,200);assert.equal((await call('reports')).status,404);assert.equal((await call('auth/signup','POST',{email:'test@example.test',password:'long-enough-password',consent:true})).status,200);
  console.log('Ověřeno',checks,'API požadavků. Testovací údaje existují pouze v paměti testu.');
+});
+
+test('Odvolaná relace: neplatné přístupové a obnovovací tokeny nevyvolají chybu 500',async()=>{
+ setTestCookie('pa_access','expired-access');
+ setTestCookie('pa_refresh','expired-refresh');
+ const response=await call('me');
+ assert.equal(response.status,200);
+ assert.equal(response.data.user,null);
+ assert.equal(getTestCookie('pa_access'),undefined);
+ assert.equal(getTestCookie('pa_refresh'),undefined);
 });
