@@ -1,0 +1,27 @@
+name: Production login reachability
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public website and login API
+        shell: bash
+        run: |
+          set -uo pipefail
+          for path in / /prihlaseni /api/v1/config; do
+            echo "Checking https://podporao.cz$path"
+            curl --location --silent --show-error --max-time 18 --output /tmp/podporao-response --write-out 'HTTP %{http_code} content_type=%{content_type} redirect=%{url_effective}\n' "https://podporao.cz$path" || true
+            echo "Payload (first 200 bytes, sanitized):"
+            head -c 200 /tmp/podporao-response 2>/dev/null | tr '\n' ' ' || true
+            echo
+          done
+          echo "Check URL and response type above. This diagnostic does not alter production."
