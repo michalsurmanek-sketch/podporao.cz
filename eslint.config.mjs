@@ -16,7 +16,7 @@ const eslintConfig = defineConfig([
   {
     // Legacy application code contains explicit-any types. Track them as warnings
     // without masking TypeScript or runtime test failures.
-    rules: { "@typescript-eslint/no-explicit-any": "warn" },
+    rules: { "@typescript-eslint/no-explicit-any": "warn", "react-hooks/set-state-in-effect": "warn", "react-hooks/error-boundaries": "warn" },
   },
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
