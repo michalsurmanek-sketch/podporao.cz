@@ -14,6 +14,7 @@ globalThis.fetch=async (input,options={})=>{
       return Response.json({id:name,email:name+'@example.test',email_confirmed_at:'2026-01-01T00:00:00Z',user_metadata:{name}});
     }
     if(path==='/auth/v1/signup')return Response.json({user:{id:'new-account',email:'test@example.test',identities:[]}});
+    if(path==='/auth/v1/resend')return Response.json({});
     return Response.json({message:'Unsupported test endpoint'},{status:400});
   }
   return realFetch(input,options);
