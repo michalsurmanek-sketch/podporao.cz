@@ -28,6 +28,22 @@ jobs:
               python -c 'import json; d=json.load(open("/tmp/pa-response")); print("Anonymous session:", d.get("user")); assert d.get("user") is None'
             fi
           done
+      - name: Inspect public Supabase email signup settings
+        shell: bash
+        run: |
+          status=$(curl --silent --show-error --max-time 20 --output /tmp/pa-auth-settings --write-out '%{http_code}' \
+            -H 'apikey: sb_publishable_J4ZxKqxJDRy8q6RtIacMWA_ORFXDcoY' \
+            'https://yqhfhpjthxcbbzdlisgt.supabase.co/auth/v1/settings') || status="network-error"
+          echo "Supabase public auth settings HTTP $status"
+          if [[ "$status" == "200" ]]; then
+            python - <<'PY'
+          import json
+          d=json.load(open('/tmp/pa-auth-settings'))
+          for key in ('disable_signup', 'mailer_autoconfirm', 'external', 'site_url'):
+              if key in d:
+                  print(f'{key}: {d[key]}')
+          PY
+          fi
       - name: Verify wrong credentials are rejected by Supabase, not an unavailable API
         shell: bash
         run: |
