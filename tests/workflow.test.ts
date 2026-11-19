@@ -1,5 +1,4 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-// @ts-expect-error Test loader supplies a SQLite-backed D1 and request context.
 import {requestContext,database,env} from './runtime.mjs';
 import {GET,POST,PATCH} from '../app/api/v1/[...path]/route';
 import {blank} from '../lib/shared';
