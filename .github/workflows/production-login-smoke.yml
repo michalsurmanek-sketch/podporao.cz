@@ -55,3 +55,9 @@ jobs:
           echo "Invalid login HTTP $status"
           python -c 'import json; d=json.load(open("/tmp/pa-login")); print("Error returned:", bool(d.get("error"))); assert d.get("error")'
           test "$status" = "400" || test "$status" = "401"
+      - name: Browser check – click real login form
+        shell: bash
+        run: |
+          npm install --no-save --ignore-scripts playwright
+          npx playwright install chromium
+          node tests/production-login-browser.mjs
