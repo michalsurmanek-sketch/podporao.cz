@@ -20,5 +20,7 @@ globalThis.fetch=async (input,options={})=>{
 };
 export function headers(){return Promise.resolve(reqHeaders)}export function cookies(){return Promise.resolve({get:n=>n==='pa_access'&&actingAs?{value:'test-token-'+actingAs}:jar.has(n)?{value:jar.get(n)}:undefined,set:(n,v)=>jar.set(n,v),delete:n=>jar.delete(n)})}
 export function requestContext(h){reqHeaders=new Headers(h);actingAs=reqHeaders.get('oai-authenticated-user-id')}
+export function setTestCookie(name,value){if(value===null)jar.delete(name);else jar.set(name,value)}
+export function getTestCookie(name){return jar.get(name)}
 export const database=sql;
 export const env={DB:{prepare(q){let args=[];const p={bind(...v){args=v;return p},async first(){return sql.prepare(q).get(...args)||null},async all(){return {results:sql.prepare(q).all(...args)}},async run(){const r=sql.prepare(q).run(...args);return {success:true,meta:{changes:Number(r.changes)}}}};return p},async batch(stmts){return Promise.all(stmts.map(s=>s.run()))}},BUCKET:{async put(k,b,o){files.set(k,{body:b,...o})},async get(k){return files.get(k)||null}}};
