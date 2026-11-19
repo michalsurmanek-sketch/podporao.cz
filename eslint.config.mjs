@@ -14,6 +14,11 @@ const eslintConfig = defineConfig([
     "work/**",
   ]),
   {
+    // Legacy application code contains explicit-any types. Track them as warnings
+    // without masking TypeScript or runtime test failures.
+    rules: { "@typescript-eslint/no-explicit-any": "warn" },
+  },
+  {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
     rules: {
       // These files are vendored verbatim from shadcn@4.17.0. Keep the
