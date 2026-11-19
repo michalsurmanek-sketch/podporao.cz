@@ -5,7 +5,7 @@ import {blank} from '../lib/shared';
 const origin='https://test.local';let checks=0;
 async function call(path:string,method='GET',body?:any,as?:string,raw?:Uint8Array,originOverride?:string){const h:any={'Origin':originOverride||origin,'cf-connecting-ip':'test-'+(++checks)};if(as){h['oai-authenticated-user-id']=as;h['oai-authenticated-user-email']=as+'@example.test';}requestContext(h);const req=new Request(origin+'/api/v1/'+path,{method,headers:h,body:raw?new Blob([raw as Uint8Array<ArrayBuffer>]):body===undefined?undefined:JSON.stringify(body)});const res=await (method==='GET'?GET:method==='PATCH'?PATCH:POST)(req);const ct=res.headers.get('Content-Type')||'';const d:any=ct.includes('json')?await res.json():null;return {status:res.status,data:d};}
 test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a ochrana dat',async()=>{
- assert.equal((await call('my')).status,401);await call('me','GET',undefined,'alice');await call('me','GET',undefined,'bob');await call('me','GET',undefined,'admin');database.prepare("UPDATE users SET role='admin' WHERE id='sites:admin'").run();
+ assert.equal((await call('my')).status,401);await call('me','GET',undefined,'alice');await call('me','GET',undefined,'bob');await call('me','GET',undefined,'admin');database.prepare("UPDATE users SET role='admin' WHERE id='supabase:admin'").run();
  assert.equal((await call('admin/projects','GET',undefined,'alice')).status,403);
  assert.equal((await call('my','POST',{...blank,title:'Cizí původ'},'alice',undefined,'https://evil.test')).status,403);
  const file=await call('uploads','POST',undefined,'alice',new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0]));assert.equal(file.status,201);
@@ -33,12 +33,12 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  assert.equal((await call('reports','POST',{project:pid,reason:'Podezřelý obsah pro test moderace.'})).status,200);
  const reports=await call('admin/reports','GET',undefined,'admin');assert.equal(reports.data.reports.length,1);assert.equal((await call('admin/reports','POST',{id:reports.data.reports[0].id,status:'resolved',note:'Zkontrolováno'},'admin')).status,200);
  assert.equal((await call('my/'+pid+'/updates','POST',{title:'Novinka',body:'Text aktuality'},'alice')).status,200);
- assert.equal((await call('admin/users','POST',{id:'sites:bob',role:'admin'},'alice')).status,403);
- await call('admin/users','POST',{id:'sites:alice',role:'author',blocked:true},'admin');assert.equal((await call('my','GET',undefined,'alice')).status,403);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
- await call('admin/users','POST',{id:'sites:alice',role:'author',blocked:false},'admin');
+ assert.equal((await call('admin/users','POST',{id:'supabase:bob',role:'admin'},'alice')).status,403);
+ await call('admin/users','POST',{id:'supabase:alice',role:'author',blocked:true},'admin');assert.equal((await call('my','GET',undefined,'alice')).status,403);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
+ await call('admin/users','POST',{id:'supabase:alice',role:'author',blocked:false},'admin');
  assert.equal((await call('my/'+pid+'/pause','POST',{},'alice')).status,200);assert.equal((await call('my/'+pid+'/updates','POST',{title:'Neveřejná novinka',body:'Při pozastavení zakázáno'},'alice')).status,400);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('media/'+file.data.url.split('/').pop())).status,404);
  await call('my/'+pid+'/restore','POST',{},'alice');assert.equal((await call('my/'+pid,'GET',undefined,'alice')).data.project.status,'draft');assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
  const notifications=await call('my','GET',undefined,'alice');assert.ok(notifications.data.notifications.length>0);assert.ok(notifications.data.notifications.every((n:any)=>n.status==='inactive'));
- assert.equal((await call('admin/audit','GET',undefined,'admin')).status,200);assert.equal((await call('reports')).status,404);assert.equal((await call('auth/signup','POST',{email:'test@example.test',password:'long-enough-password',consent:true})).status,503);
+ assert.equal((await call('admin/audit','GET',undefined,'admin')).status,200);assert.equal((await call('reports')).status,404);assert.equal((await call('auth/signup','POST',{email:'test@example.test',password:'long-enough-password',consent:true})).status,200);
  console.log('Ověřeno',checks,'API požadavků. Testovací údaje existují pouze v paměti testu.');
 });
