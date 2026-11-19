@@ -3,12 +3,12 @@ import {cookies,headers} from 'next/headers';
 import type {ProjectData,User} from './shared';
 import {defaultCategories,defaults} from './shared';
 import {account} from './payment';
-type AppConfig={DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;ADMIN_BOOTSTRAP_EMAIL?:string;SITE_ORIGIN?:string};
+type AppConfig={DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;SITE_ORIGIN?:string};
 // This is a public, low-privilege Supabase publishable key, NOT a service role secret.
 // The server still verifies each user's access token with Supabase Auth.
 const DEFAULT_SUPABASE_URL='https://yqhfhpjthxcbbzdlisgt.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY="sb_publishable_J4ZxKqxJDRy8q6RtIacMWA_ORFXDcoY";
-export function config():AppConfig{const current=env as unknown as AppConfig;return {...current,SUPABASE_URL:current.SUPABASE_URL||DEFAULT_SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY:current.SUPABASE_PUBLISHABLE_KEY||DEFAULT_SUPABASE_PUBLISHABLE_KEY,ADMIN_BOOTSTRAP_EMAIL:current.ADMIN_BOOTSTRAP_EMAIL||'info@podporao.cz'};}
+export function config():AppConfig{const current=env as unknown as AppConfig;return {...current,SUPABASE_URL:current.SUPABASE_URL||DEFAULT_SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY:current.SUPABASE_PUBLISHABLE_KEY||DEFAULT_SUPABASE_PUBLISHABLE_KEY};}
 export const now=()=>new Date().toISOString();export const id=()=>crypto.randomUUID();
 export const db=()=>config().DB;
 export async function one<T=any>(sql:string,...v:any[]):Promise<T|null>{return db().prepare(sql).bind(...v).first<T>();}
@@ -31,7 +31,7 @@ function decode(s:string){try{return decodeURIComponent(s)}catch{return s}}
 export async function user(required=true):Promise<User|null>{
  const i=await identity();if(!i){if(required)fail(401,'Nejprve se přihlaste.');return null;}
  await run('INSERT OR IGNORE INTO users(id,email,name,created) VALUES(?,?,?,?)',i.id,i.email,i.name,now());
- if(config().ADMIN_USER_ID===i.id||(config().ADMIN_BOOTSTRAP_EMAIL&&i.email.toLowerCase()===config().ADMIN_BOOTSTRAP_EMAIL!.toLowerCase()))await run("UPDATE users SET role='admin' WHERE id=?",i.id);
+ if(config().ADMIN_USER_ID&&config().ADMIN_USER_ID===i.id)await run("UPDATE users SET role='admin' WHERE id=?",i.id);
  const u=await one<User>('SELECT * FROM users WHERE id=?',i.id);if(u?.blocked)fail(403,'Účet je zablokovaný. Kontaktujte provozovatele.');return u;
 }
 export async function staff(adminOnly=false){const u=(await user())!;if(!(adminOnly?u.role==='admin':['admin','moderator'].includes(u.role)))fail(403,'Pro tuto akci nemáte oprávnění.');return u;}
