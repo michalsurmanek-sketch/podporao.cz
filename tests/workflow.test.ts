@@ -16,7 +16,9 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  assert.equal((await call('my','POST',data,'bob')).status,403); // cannot steal Alice's upload
  assert.equal((await call('my/'+pid+'/submit','POST',{},'alice')).status,200);
  assert.equal((await call('admin/projects','POST',{id:pid,action:'approve'},'alice')).status,403);
- assert.equal((await call('admin/projects','POST',{id:pid,action:'approve'},'admin')).status,200);
+ let adminProject=(await call('my/'+pid,'GET',undefined,'alice')).data.project;
+ assert.equal((await call('admin/projects','POST',{id:pid,action:'approve',version:adminProject.version-1},'admin')).status,409);
+ assert.equal((await call('admin/projects','POST',{id:pid,action:'approve',version:adminProject.version},'admin')).status,200);
  const publicData=await call('projects/'+slug);assert.equal(publicData.status,200);assert.equal(publicData.data.project.title,data.title);assert.equal(publicData.data.project.draft,undefined);assert.equal(publicData.data.project.author.email,undefined);
  assert.equal((await call('media/'+file.data.url.split('/').pop())).status,200);
  const qr=await call('projects/'+pid+'/qr','POST',{amount:'150,25'});assert.equal(qr.status,200);assert.match(qr.data.payload,/AM:150.25/);assert.equal((await call('projects/'+pid+'/qr','POST',{amount:'-1'})).status,400);
@@ -28,14 +30,14 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  assert.equal((await call('my/'+pid,'PATCH',{version,data:{...data,recipient:'Nový příjemce'}},'alice')).status,200);
  assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409); // recipient freezes support
  assert.equal((await call('projects/'+slug)).data.project.recipient,data.recipient); // public snapshot preserved
- await call('my/'+pid+'/submit','POST',{},'alice');assert.equal((await call('admin/projects','POST',{id:pid,action:'approve'},'admin')).status,200);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,200);
+ await call('my/'+pid+'/submit','POST',{},'alice');adminProject=(await call('my/'+pid,'GET',undefined,'alice')).data.project;assert.equal((await call('admin/projects','POST',{id:pid,action:'approve',version:adminProject.version},'admin')).status,200);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,200);
  assert.equal((await call('reports','POST',{project:pid,reason:'Podezřelý obsah pro test moderace.'})).status,200);
  const reports=await call('admin/reports','GET',undefined,'admin');assert.equal(reports.data.reports.length,1);assert.equal((await call('admin/reports','POST',{id:reports.data.reports[0].id,status:'resolved',note:'Zkontrolováno'},'admin')).status,200);
  assert.equal((await call('my/'+pid+'/updates','POST',{title:'Novinka',body:'Text aktuality'},'alice')).status,200);
  assert.equal((await call('admin/users','POST',{id:'sites:bob',role:'admin'},'alice')).status,403);
  await call('admin/users','POST',{id:'sites:alice',role:'author',blocked:true},'admin');assert.equal((await call('my','GET',undefined,'alice')).status,403);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
  await call('admin/users','POST',{id:'sites:alice',role:'author',blocked:false},'admin');
- assert.equal((await call('my/'+pid+'/pause','POST',{},'alice')).status,200);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('media/'+file.data.url.split('/').pop())).status,404);
+ assert.equal((await call('my/'+pid+'/pause','POST',{},'alice')).status,200);assert.equal((await call('my/'+pid+'/updates','POST',{title:'Neveřejná novinka',body:'Při pozastavení zakázáno'},'alice')).status,400);assert.equal((await call('projects/'+slug)).status,404);assert.equal((await call('media/'+file.data.url.split('/').pop())).status,404);
  await call('my/'+pid+'/restore','POST',{},'alice');assert.equal((await call('my/'+pid,'GET',undefined,'alice')).data.project.status,'draft');assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
  const notifications=await call('my','GET',undefined,'alice');assert.ok(notifications.data.notifications.length>0);assert.ok(notifications.data.notifications.every((n:any)=>n.status==='inactive'));
  assert.equal((await call('admin/audit','GET',undefined,'admin')).status,200);assert.equal((await call('reports')).status,404);assert.equal((await call('auth/signup','POST',{email:'test@example.test',password:'long-enough-password',consent:true})).status,503);
