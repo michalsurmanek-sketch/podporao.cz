@@ -40,6 +40,7 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  await call('my/'+pid+'/restore','POST',{},'alice');assert.equal((await call('my/'+pid,'GET',undefined,'alice')).data.project.status,'draft');assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409);
  const notifications=await call('my','GET',undefined,'alice');assert.ok(notifications.data.notifications.length>0);assert.ok(notifications.data.notifications.every((n:any)=>n.status==='inactive'));
  assert.equal((await call('admin/audit','GET',undefined,'admin')).status,200);assert.equal((await call('reports')).status,404);assert.equal((await call('auth/signup','POST',{email:'test@example.test',password:'long-enough-password',consent:true})).status,200);
+ assert.equal((await call('auth/resend','POST',{email:'test@example.test'})).status,200);
  console.log('Ověřeno',checks,'API požadavků. Testovací údaje existují pouze v paměti testu.');
 });
 
