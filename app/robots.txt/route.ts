@@ -1,0 +1,1 @@
+export function GET(req:Request){return new Response('User-agent: *\nAllow: /\nDisallow: /ucet\nDisallow: /administrace\nDisallow: /api/\nDisallow: /prihlaseni\nDisallow: /registrace\nDisallow: /obnova-hesla\nDisallow: /potvrzeni\nSitemap: '+new URL(req.url).origin+'/sitemap.xml',{headers:{'Content-Type':'text/plain'}})}

@@ -1,0 +1,3 @@
+import {all} from '@/lib/server';
+const escape=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+export async function GET(req:Request){let slugs:string[]=[];try{const p=await all("SELECT slug FROM projects WHERE published IS NOT NULL AND status IN ('published','pending','changes','rejected') AND owner IN (SELECT id FROM users WHERE blocked=0)");slugs=p.map(x=>'/projekt/'+x.slug)}catch{}const origin=new URL(req.url).origin;return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['/','/projekty','/jak-to-funguje','/faq','/kontakt',...slugs].map(p=>'<url><loc>'+escape(origin+p)+'</loc></url>').join('')+'</urlset>',{headers:{'Content-Type':'application/xml'}})}
