@@ -12,7 +12,9 @@ export async function run(sql:string,...v:any[]){return db().prepare(sql).bind(.
 export class HttpError extends Error {constructor(public status:number,message:string){super(message)}}
 export function fail(status:number,message:string):never{throw new HttpError(status,message);}
 export async function identity():Promise<{id:string;email:string;name:string}|null>{
- const h=await headers(),site=h.get('oai-authenticated-user-id');
+ const h=await headers();
+ // On public deployments with email auth, do not accept hosting-specific identity headers.
+ const site=config().SUPABASE_URL&&config().SUPABASE_PUBLISHABLE_KEY?null:h.get('oai-authenticated-user-id');
  if(site)return {id:'sites:'+site,email:h.get('oai-authenticated-user-email')||'',name:decode(h.get('oai-authenticated-user-full-name')||'Nový autor')};
  const c=await cookies(),token=c.get('pa_access')?.value;
  if(!token||!config().SUPABASE_URL||!config().SUPABASE_PUBLISHABLE_KEY)return null;
