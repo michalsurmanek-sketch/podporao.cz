@@ -3,7 +3,12 @@ import {cookies,headers} from 'next/headers';
 import type {ProjectData,User} from './shared';
 import {defaultCategories,defaults} from './shared';
 import {account} from './payment';
-export function config(){return env as unknown as {DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;ADMIN_BOOTSTRAP_EMAIL?:string;SITE_ORIGIN?:string};}
+type AppConfig={DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;ADMIN_BOOTSTRAP_EMAIL?:string;SITE_ORIGIN?:string};
+// This is a public, low-privilege Supabase publishable key, NOT a service role secret.
+// The server still verifies each user's access token with Supabase Auth.
+const DEFAULT_SUPABASE_URL='https://yqhfhpjthxcbbzdlisgt.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY="sb_publishable_J4ZxKqxJDRy8q6RtIacMWA_ORFXDcoY";
+export function config():AppConfig{const current=env as unknown as AppConfig;return {...current,SUPABASE_URL:current.SUPABASE_URL||DEFAULT_SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY:current.SUPABASE_PUBLISHABLE_KEY||DEFAULT_SUPABASE_PUBLISHABLE_KEY,ADMIN_BOOTSTRAP_EMAIL:current.ADMIN_BOOTSTRAP_EMAIL||'info@podporao.cz'};}
 export const now=()=>new Date().toISOString();export const id=()=>crypto.randomUUID();
 export const db=()=>config().DB;
 export async function one<T=any>(sql:string,...v:any[]):Promise<T|null>{return db().prepare(sql).bind(...v).first<T>();}
@@ -51,5 +56,5 @@ export async function dataInput(raw:any,uid:string,submit=false):Promise<Project
 export async function notify(uid:string,subject:string,body:string){const u=await one('SELECT email FROM users WHERE id=?',uid);if(!u)return;const c=config();let status='inactive';if(c.RESEND_API_KEY&&c.EMAIL_FROM){try{const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+c.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:c.EMAIL_FROM,to:[u.email],subject,text:body})});status=r.ok?'sent':'failed';}catch{status='failed';}}
  await run('INSERT INTO notifications VALUES(?,?,?,?,?,?)',id(),uid,subject,body,status,now());
 }
-export async function authFetch(path:string,body:any,token?:string){const c=config();if(!c.SUPABASE_URL||!c.SUPABASE_PUBLISHABLE_KEY)fail(503,'E-mailové přihlášení zatím není připojené. Použijte přihlášení přes ChatGPT.');const r=await fetch(c.SUPABASE_URL+'/auth/v1'+path,{method:path==='/user'?'PUT':'POST',headers:{apikey:c.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const d=await r.json() as any;if(!r.ok)fail(r.status>=500?502:400,d.msg||d.error_description||d.message||'Požadavek se nepodařilo dokončit.');return d;}
+export async function authFetch(path:string,body:any,token?:string){const c=config();if(!c.SUPABASE_URL||!c.SUPABASE_PUBLISHABLE_KEY)fail(503,'E-mailové přihlášení momentálně není dostupné.');const r=await fetch(c.SUPABASE_URL+'/auth/v1'+path,{method:path==='/user'?'PUT':'POST',headers:{apikey:c.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const d=await r.json() as any;if(!r.ok)fail(r.status>=500?502:400,d.msg||d.error_description||d.message||'Požadavek se nepodařilo dokončit.');return d;}
 export async function setSession(d:any){const c=await cookies();for(const [name,value] of [['pa_access',d.access_token],['pa_refresh',d.refresh_token]])if(value)c.set(name,value,{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:name==='pa_access'?3600:60*60*24*30});}
