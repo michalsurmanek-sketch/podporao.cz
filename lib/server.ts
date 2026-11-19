@@ -23,9 +23,28 @@ export async function identity():Promise<{id:string;email:string;name:string}|nu
  if(site)return {id:'sites:'+site,email:h.get('oai-authenticated-user-email')||'',name:decode(h.get('oai-authenticated-user-full-name')||'Nový autor')};
  const c=await cookies(),token=c.get('pa_access')?.value;
  if(!token||!config().SUPABASE_URL||!config().SUPABASE_PUBLISHABLE_KEY)return null;
- let r=await fetch(config().SUPABASE_URL+'/auth/v1/user',{headers:{apikey:config().SUPABASE_PUBLISHABLE_KEY!,Authorization:'Bearer '+token}});
- if(!r.ok){const refresh=c.get('pa_refresh')?.value;if(!refresh)return null;const fresh=await authFetch('/token?grant_type=refresh_token',{refresh_token:refresh});if(!fresh.access_token)return null;await setSession(fresh);r=await fetch(config().SUPABASE_URL+'/auth/v1/user',{headers:{apikey:config().SUPABASE_PUBLISHABLE_KEY!,Authorization:'Bearer '+fresh.access_token}});}
- if(!r.ok)return null;const u=await r.json() as any;if(!u.email_confirmed_at)return null;return {id:'supabase:'+u.id,email:u.email||'',name:u.user_metadata?.name||'Nový autor'};
+ const authHeaders=(access:string)=>({apikey:config().SUPABASE_PUBLISHABLE_KEY!,Authorization:'Bearer '+access});
+ let r=await fetch(config().SUPABASE_URL+'/auth/v1/user',{headers:authHeaders(token)});
+ if(r.status===401||r.status===403){
+  const refresh=c.get('pa_refresh')?.value;
+  if(!refresh){c.delete('pa_access');return null;}
+  let fresh:any;
+  try{fresh=await authFetch('/token?grant_type=refresh_token',{refresh_token:refresh});}
+  catch(e){
+   // A rejected refresh token means a genuinely expired/revoked session.
+   // Preserve credentials on a provider outage so the user can retry.
+   if(e instanceof HttpError&&e.status===400){c.delete('pa_access');c.delete('pa_refresh');return null;}
+   throw e;
+  }
+  if(!fresh?.access_token){c.delete('pa_access');c.delete('pa_refresh');return null;}
+  await setSession(fresh);
+  r=await fetch(config().SUPABASE_URL+'/auth/v1/user',{headers:authHeaders(fresh.access_token)});
+ }
+ if(r.status===401||r.status===403){c.delete('pa_access');c.delete('pa_refresh');return null;}
+ if(!r.ok)fail(503,'Ověření přihlášení je dočasně nedostupné.');
+ const u=await r.json() as any;
+ if(!u.email_confirmed_at)return null;
+ return {id:'supabase:'+u.id,email:u.email||'',name:u.user_metadata?.name||'Nový autor'};
 }
 function decode(s:string){try{return decodeURIComponent(s)}catch{return s}}
 export async function user(required=true):Promise<User|null>{
