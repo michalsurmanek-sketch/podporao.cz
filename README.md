@@ -26,7 +26,7 @@ Migraci přehrajte pouze do prázdné lokální databáze. Další změny: uprav
 
 Soukromý náhled používá hostované Sign in with ChatGPT. Identita je ověřená na hostingu, server spoléhá na jím vložené hlavičky. Samostatný Worker nesmí být veřejně dostupný bez vrstvy, která tyto hlavičky odstraní a bezpečně ověří identitu. Na jiném hostingu tyto hlavičky nikdy nepřebírejte od klienta; použijte pouze ověřené Supabase účty.
 
-Po prvním přihlášení získejte své přesné `user.id` z `/api/v1/me` a nastavte serverovou proměnnou `ADMIN_USER_ID` na tuto hodnotu. Alternativně nastavte `ADMIN_BOOTSTRAP_EMAIL` na přesný ověřený e-mail provozovatele. Porovnává se pouze e-mail potvrzený poskytovatelem identity, ne jméno ani uživatelská metadata. Při prvním přihlášení správce lze přejít na stabilní `ADMIN_USER_ID`. První návštěvník se nikdy automaticky nestává administrátorem. Proměnnou přidělujte pouze ověřenému provozovateli. Formát je `sites:<stabilní ID>` nebo `supabase:<UUID>`. Další role přiděluje administrátor. Vlastní účet nelze z administrace zablokovat ani mu odebrat roli.
+Po prvním přihlášení získejte své přesné `user.id` z `/api/v1/me` a nastavte serverovou proměnnou `ADMIN_USER_ID` na tuto hodnotu. Pro veřejný provoz používejte výhradně stabilní `ADMIN_USER_ID`, ideálně `supabase:<UUID>` z ověřeného uživatelského účtu. Nepřidělujte roli pouze podle e-mailové adresy: při špatném nastavení ověřování e-mailu by to mohlo umožnit převzetí administrace. První návštěvník se nikdy automaticky nestává administrátorem. Proměnnou přidělujte pouze ověřenému provozovateli. Formát je `sites:<stabilní ID>` nebo `supabase:<UUID>`. Další role přiděluje administrátor. Vlastní účet nelze z administrace zablokovat ani mu odebrat roli.
 
 ## E-mailové účty přes Supabase
 
