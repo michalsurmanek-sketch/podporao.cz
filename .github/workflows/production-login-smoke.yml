@@ -13,15 +13,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check public website and login API
+      - name: Verify public website, login page and API
         shell: bash
         run: |
-          set -uo pipefail
-          for path in / /prihlaseni /api/v1/config; do
-            echo "Checking https://podporao.cz$path"
-            curl --location --silent --show-error --max-time 18 --output /tmp/podporao-response --write-out 'HTTP %{http_code} content_type=%{content_type} redirect=%{url_effective}\n' "https://podporao.cz$path" || true
-            echo "Payload (first 200 bytes, sanitized):"
-            head -c 200 /tmp/podporao-response 2>/dev/null | tr '\n' ' ' || true
-            echo
+          set -euo pipefail
+          for path in / /prihlaseni /api/v1/config /api/v1/me; do
+            status=$(curl --location --silent --show-error --max-time 20 --output /tmp/pa-response --write-out '%{http_code}' "https://podporao.cz$path")
+            echo "$path HTTP $status"
+            test "$status" = "200"
+            if [[ "$path" == "/api/v1/config" ]]; then
+              python -c 'import json; d=json.load(open("/tmp/pa-response")); print("Supabase Auth configured:", d.get("auth")); assert d.get("auth") is True'
+            fi
+            if [[ "$path" == "/api/v1/me" ]]; then
+              python -c 'import json; d=json.load(open("/tmp/pa-response")); print("Anonymous session:", d.get("user")); assert d.get("user") is None'
+            fi
           done
-          echo "Check URL and response type above. This diagnostic does not alter production."
+      - name: Verify wrong credentials are rejected by Supabase, not an unavailable API
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /tmp/pa-login --write-out '%{http_code}' \
+            -H 'Origin: https://podporao.cz' -H 'Content-Type: application/json' \
+            --data '{"email":"podporao-smoke-unknown@example.invalid","password":"a-purposefully-incorrect-password"}' \
+            'https://podporao.cz/api/v1/auth/login')
+          echo "Invalid login HTTP $status"
+          python -c 'import json; d=json.load(open("/tmp/pa-login")); print("Error returned:", bool(d.get("error"))); assert d.get("error")'
+          test "$status" = "400" || test "$status" = "401"
