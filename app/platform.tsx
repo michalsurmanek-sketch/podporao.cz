@@ -1,7 +1,9 @@
 'use client';
 import React,{useState,useEffect,useCallback,createContext,useContext} from 'react';
-import Link from 'next/link';
-import {usePathname,useRouter} from 'next/navigation';
+// Native navigation avoids the framework's failing RSC link handler in production.
+function Link(props:React.AnchorHTMLAttributes<HTMLAnchorElement>){return <a {...props}/>}
+import {usePathname} from 'next/navigation';
+function useRouter(){return {push:(url:string)=>window.location.assign(url),replace:(url:string)=>window.location.replace(url)}}
 import {Heart,Leaf,Plus,Search,Menu,X,ShieldCheck,Wallet,Copy,Download,Check,Users,Lightbulb,Flower2,Palette,Laptop,Flag,ImagePlus,ChevronLeft,ChevronRight,LayoutDashboard,FolderOpen,Settings,LogOut,Mail,Eye,FileText,Clock,CheckCircle2,AlertCircle,ExternalLink,MoreHorizontal,Save,Upload,Trash2,PauseCircle,Archive,RotateCcw,Send,Sprout,Layers,Coins,QrCode,Tag,Compass,ArrowRight} from 'lucide-react';
 import {blank,defaults,defaultCategories,demos,labels,type ProjectData,type User} from '@/lib/shared';
 import {account,spayd,amount as parseAmount} from '@/lib/payment';
