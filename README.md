@@ -79,3 +79,16 @@ Kontaktní e-mail potvrzený provozovatelem: `info@podporao.cz`. Jméno/název, 
 První správce musí dokončit skutečnou registraci a ověření účtu. Bootstrap je určen pouze e-mailu shodnému s vlastníkem hostované aplikace a historickým správcem; není to veřejný kód ani první libovolný návštěvník. Reálný produkční průchod účtem, uploadem a moderací není nahrazen lokálními testy.
 
 Při lokálním prohlížečovém testu autosave byla použita dočasná testovací API fixture. Ověřeno vytvoření konceptu, zachování dat po obnovení a uložení poslední změny během probíhajícího zápisu. Fixture byla odstraněna a před buildem obnoven skutečný API handler; žádná testovací identita se nesmí nasadit.
+
+## Připravené nastavení Supabase Auth (21. 11. 2026)
+
+České šablony jsou v `supabase/templates/confirmation.html` a `recovery.html`.
+Jejich přidání do repozitáře samo o sobě nemění hostovaný Supabase projekt.
+
+- `node scripts/configure-supabase-auth.mjs --check` ověří lokální šablony a návratové odkazy bez přístupu k účtu.
+- S `SUPABASE_ACCESS_TOKEN` předaným bezpečně v prostředí lze použít `--dry-run` pro porovnání a `--apply` pro uložení. Osobní přístupový token patří pouze do prostředí správce, nikdy do Gitu, prohlížeče nebo argumentů příkazu. Anon/publishable klíč nestačí.
+- Skript nastaví Site URL `https://podporao.cz`, české předměty a šablony a doplní přesné cesty `/potvrzeni` a `/obnova-hesla` pro hlavní i www doménu. Existující redirect URL zachová; správce musí zvlášť posoudit jejich vhodnost. Po uložení porovná konfiguraci zpětným načtením. SMTP a ostatní nastavení nemění.
+- V dashboardu ověřte zapnuté registrace přes e-mail a potvrzování e-mailu. Pro odesílání z `info@podporao.cz` je potřeba skutečně dostupné SMTP s ověřenou doménou. Samotná e-mailová adresa není SMTP přístup.
+- Zkušební registrace, doručení potvrzení, dokončení ověření a obnova hesla musí být ověřeny skutečným e-mailem až po konfiguraci. Lokální kontrola šablon není test doručitelnosti.
+
+Při kontrole tohoto dne Supabase bezpečnostní a zdravotní poradce nehlásil problém. Přihlášení do dashboardu nebylo dokončeno, proto zde připravené Auth nastavení nebylo vzdáleně aplikováno. Tabulky `public.profiles` a `public.projects` mají RLS, ale současná aplikace ukládá projekty a role do D1; tato příprava neprovádí migraci dat do PostgreSQL.
