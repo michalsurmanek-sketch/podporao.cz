@@ -26,7 +26,7 @@ Migraci přehrajte pouze do prázdné lokální databáze. Další změny: uprav
 
 Původní soukromý náhled používal hostované Sign in with ChatGPT. Při nakonfigurovaném Supabase Auth je tato identita záměrně ignorována. Pokud Supabase není aktivní, náhled může využívat pouze hostingem důvěryhodně vložené identitní hlavičky. Samostatný Worker nesmí být veřejně dostupný bez vrstvy, která tyto hlavičky odstraní a bezpečně ověří identitu. Na jiném hostingu tyto hlavičky nikdy nepřebírejte od klienta; použijte pouze ověřené Supabase účty.
 
-Po prvním přihlášení získejte své přesné `user.id` z `/api/v1/me` a nastavte serverovou proměnnou `ADMIN_USER_ID` na tuto hodnotu. Pro veřejný provoz používejte výhradně stabilní `ADMIN_USER_ID`, ideálně `supabase:<UUID>` z ověřeného uživatelského účtu. Nepřidělujte roli pouze podle e-mailové adresy: při špatném nastavení ověřování e-mailu by to mohlo umožnit převzetí administrace. První návštěvník se nikdy automaticky nestává administrátorem. Proměnnou přidělujte pouze ověřenému provozovateli. Formát je `sites:<stabilní ID>` nebo `supabase:<UUID>`. Další role přiděluje administrátor. Vlastní účet nelze z administrace zablokovat ani mu odebrat roli.
+Doporučená cesta je přesné `ADMIN_USER_ID=supabase:<UUID>` již ověřeného účtu. Alternativně lze serverovým secretem `ADMIN_BOOTSTRAP_EMAIL` předem určit e-mail provozovatele. Tato cesta vyžaduje skutečně ověřený e-mail vrácený Supabase, nepřijímá klientské metadata ani první libovolnou registraci. První shoda se atomicky a natrvalo zaznamená v auditní tabulce jako `initial-supabase-admin`. Další změna bootstrap e-mailu už jiného správce nevytvoří; další role přiděluje existující admin. Po dokončení bootstrap secret odstraňte. Přiřazení uživatelské identity ani zásah do databáze se neprovádí z prohlížeče.
 
 ## E-mailové účty přes Supabase
 
@@ -61,6 +61,21 @@ Repozitář nyní používá Supabase Auth projekt `www.podporao.cz` pro registr
 
 `info@podporao.cz` je příchozí pošta na Cloudflare Email Routing přeposílaná do ověřené schránky, což samo o sobě neověřuje odesílání přes Supabase nebo Resend.
 
-**Zprovoznění prvního admina:** Zaregistrujte na veřejném webu účet, potvrďte e-mail v Supabase Auth, v Supabase dashboardu otevřete jeho `auth.users.id` a nastavte na serverovém hostingu `ADMIN_USER_ID=supabase:<UUID>`. Restartujte nasazení, přihlaste se tímto účtem a otestujte `/administrace`. E-mail samotný admina nikdy automaticky nevytváří. Chybějící možnost konfigurace Sites hostingu blokuje dokončení tohoto kroku z GitHubu.
+**Zprovoznění prvního admina:** Zaregistrujte účet provozovatele a skutečně ověřte e-mail. Použijte jednu ze dvou serverových cest popsaných výše; potom přihlášením ověřte `/administrace`. Historický `sites:` účet se s novým Supabase účtem automaticky neslučuje.
 
 **Zbývající externí nastavení:** Supabase Auth URL Configuration nastavte Site URL `https://podporao.cz`, přesné redirect URL `https://podporao.cz/potvrzeni`, `https://podporao.cz/obnova-hesla`; zapněte potvrzování e-mailů a nastavte odpovídající e-mailové šablony dle výše. V Supabase nakonfigurujte produkční SMTP, ověřte odeslání potvrzovacího e-mailu. Pro oznámení autorům nastavte na hostingu Resend `RESEND_API_KEY` a `EMAIL_FROM=Podporao <info@podporao.cz>` po ověření odesílací domény. Žádný z těchto tajných klíčů nezapisujte do Gitu. Otestujte end-to-end uživatele, QR a audit.
+
+## Opravy 21. 11. 2026
+
+- Obnovení pozastaveného či archivovaného projektu odstraňuje veřejný snapshot. Uložení konceptu jej nesmí znovu zveřejnit; vyžaduje nové schválení.
+- Koncept se při vyplněném názvu ukládá na server po 1,5 s nečinnosti. Souběžná uložení se serializují; při chybě zůstává text ve formuláři a při odchodu se zobrazí varování.
+- Server validuje úplnost obrázkového kontejneru, rozměry, velikost a PNG CRC. Klient fotografie nadále optimalizuje do WebP. Strukturální validace nenahrazuje antivirový scan ani úplné dekódování všech obrazových dat na serveru.
+- FAQ je v patičce; text patičky a CTA se načítají z obsahu spravovaného administrací.
+
+## Ověřený stav při opravách
+
+Kontaktní e-mail potvrzený provozovatelem: `info@podporao.cz`. Jméno/název, IČO a sídlo zatím nebyly dodané a pracovní právní texty nejsou označené za dokončené. Odesílací poskytovatel není připojený; Resend API klíč nebyl dostupný a Cloudflare Email Sending při ověření vrátilo 401. Připravená administrace oznámení umožňuje po připojení poskytovatele zopakovat neodeslané zprávy; stav sent znamená přijetí poskytovatelem, nikoliv doručení do schránky.
+
+První správce musí dokončit skutečnou registraci a ověření účtu. Bootstrap je určen pouze e-mailu shodnému s vlastníkem hostované aplikace a historickým správcem; není to veřejný kód ani první libovolný návštěvník. Reálný produkční průchod účtem, uploadem a moderací není nahrazen lokálními testy.
+
+Při lokálním prohlížečovém testu autosave byla použita dočasná testovací API fixture. Ověřeno vytvoření konceptu, zachování dat po obnovení a uložení poslední změny během probíhajícího zápisu. Fixture byla odstraněna a před buildem obnoven skutečný API handler; žádná testovací identita se nesmí nasadit.

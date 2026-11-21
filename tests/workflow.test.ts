@@ -2,13 +2,14 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {requestContext,database,setTestCookie,getTestCookie} from './runtime.mjs';
 import {GET,POST,PATCH} from '../app/api/v1/[...path]/route';
 import {blank} from '../lib/shared';
+import {PNG} from 'pngjs';
 const origin='https://test.local';let checks=0;
 async function call(path:string,method='GET',body?:any,as?:string,raw?:Uint8Array,originOverride?:string){const h:any={'Origin':originOverride||origin,'cf-connecting-ip':'test-'+(++checks)};if(as){h['oai-authenticated-user-id']=as;h['oai-authenticated-user-email']=as+'@example.test';}requestContext(h);const req=new Request(origin+'/api/v1/'+path,{method,headers:h,body:raw?new Blob([raw as Uint8Array<ArrayBuffer>]):body===undefined?undefined:JSON.stringify(body)});const res=await (method==='GET'?GET:method==='PATCH'?PATCH:POST)(req);const ct=res.headers.get('Content-Type')||'';const d:any=ct.includes('json')?await res.json():null;return {status:res.status,data:d};}
 test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a ochrana dat',async()=>{
  assert.equal((await call('my')).status,401);await call('me','GET',undefined,'alice');await call('me','GET',undefined,'bob');await call('me','GET',undefined,'admin');database.prepare("UPDATE users SET role='admin' WHERE id='supabase:admin'").run();
  assert.equal((await call('admin/projects','GET',undefined,'alice')).status,403);
  assert.equal((await call('my','POST',{...blank,title:'Cizí původ'},'alice',undefined,'https://evil.test')).status,403);
- const file=await call('uploads','POST',undefined,'alice',new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0]));assert.equal(file.status,201);
+ const file=await call('uploads','POST',undefined,'alice',new Uint8Array(PNG.sync.write(new PNG({width:1,height:1}))));assert.equal(file.status,201);
  const data={...blank,title:'Skutečný test projektu',summary:'Dostatečně dlouhé představení projektu.',description:'Toto je delší popis testovacího projektu pro ověření schvalování a veřejné verze.',purpose:'Podpora dalšího vývoje a provozu.',image:file.data.url,account:'19-2000145399/0800',recipient:'Testovací příjemce'};
  const created=await call('my','POST',data,'alice');assert.equal(created.status,201);const pid=created.data.id;let detail=await call('my/'+pid,'GET',undefined,'alice');const slug=detail.data.project.slug;
  assert.equal((await call('my/'+pid,'GET',undefined,'bob')).status,403);assert.equal((await call('media/'+file.data.url.split('/').pop())).status,404);assert.equal((await call('projects/'+slug)).status,404);

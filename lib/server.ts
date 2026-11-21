@@ -3,7 +3,7 @@ import {cookies,headers} from 'next/headers';
 import type {ProjectData,User} from './shared';
 import {defaultCategories,defaults} from './shared';
 import {account} from './payment';
-type AppConfig={DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;SITE_ORIGIN?:string};
+type AppConfig={DB:D1Database;BUCKET:R2Bucket;SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;ADMIN_USER_ID?:string;ADMIN_BOOTSTRAP_EMAIL?:string;SITE_ORIGIN?:string};
 // This is a public, low-privilege Supabase publishable key, NOT a service role secret.
 // The server still verifies each user's access token with Supabase Auth.
 const DEFAULT_SUPABASE_URL='https://yqhfhpjthxcbbzdlisgt.supabase.co';
@@ -51,6 +51,16 @@ export async function user(required=true):Promise<User|null>{
  const i=await identity();if(!i){if(required)fail(401,'Nejprve se přihlaste.');return null;}
  await run('INSERT OR IGNORE INTO users(id,email,name,created) VALUES(?,?,?,?)',i.id,i.email,i.name,now());
  if(config().ADMIN_USER_ID&&config().ADMIN_USER_ID===i.id)await run("UPDATE users SET role='admin' WHERE id=?",i.id);
+ // Bind the initial owner once, using only a verified Supabase identity and a server secret.
+ const bootstrap=(config().ADMIN_BOOTSTRAP_EMAIL||'').trim().toLowerCase();
+ if(i.id.startsWith('supabase:')&&bootstrap&&i.email.toLowerCase()===bootstrap){
+  const stamp=now();
+  await db().batch([
+   db().prepare("INSERT OR IGNORE INTO audit(id,actor,action,target,detail,created) SELECT 'initial-supabase-admin',?,'bootstrap-admin',?,'Přiřazení ověřeného provozovatele',? WHERE NOT EXISTS (SELECT 1 FROM users WHERE role='admin' AND id LIKE 'supabase:%')").bind(i.id,i.id,stamp),
+   db().prepare("UPDATE users SET role='admin' WHERE id=? AND EXISTS (SELECT 1 FROM audit WHERE id='initial-supabase-admin' AND actor=? AND created=?)").bind(i.id,i.id,stamp)
+  ]);
+ }
+
  const u=await one<User>('SELECT * FROM users WHERE id=?',i.id);if(u?.blocked)fail(403,'Účet je zablokovaný. Kontaktujte provozovatele.');return u;
 }
 export async function staff(adminOnly=false){const u=(await user())!;if(!(adminOnly?u.role==='admin':['admin','moderator'].includes(u.role)))fail(403,'Pro tuto akci nemáte oprávnění.');return u;}
@@ -72,8 +82,13 @@ export async function dataInput(raw:any,uid:string,submit=false):Promise<Project
  if(submit&&(!d.title||d.summary.length<15||d.description.length<40||d.purpose.length<15||!d.image||!d.recipient||!d.account))fail(400,'Doplňte název, představení (15 znaků), popis (40), využití podpory (15), fotografii, příjemce a platný účet.');
  return d;
 }
-export async function notify(uid:string,subject:string,body:string){const u=await one('SELECT email FROM users WHERE id=?',uid);if(!u)return;const c=config();let status='inactive';if(c.RESEND_API_KEY&&c.EMAIL_FROM){try{const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+c.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:c.EMAIL_FROM,to:[u.email],subject,text:body})});status=r.ok?'sent':'failed';}catch{status='failed';}}
- await run('INSERT INTO notifications VALUES(?,?,?,?,?,?)',id(),uid,subject,body,status,now());
+export async function deliverNotification(notificationId:string){
+ const c=config();if(!c.RESEND_API_KEY||!c.EMAIL_FROM)return 'inactive';
+ const row=await one('SELECT n.*,u.email FROM notifications n JOIN users u ON u.id=n.recipient WHERE n.id=?',notificationId);if(!row)fail(404,'Oznámení neexistuje.');if(row.status==='sent')return 'sent';
+ const claim=await run("UPDATE notifications SET status='sending' WHERE id=? AND status IN ('inactive','failed','pending')",notificationId);if(!claim.meta.changes)fail(409,'Oznámení se již odesílá.');
+ let status='failed';try{const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+c.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':notificationId},body:JSON.stringify({from:c.EMAIL_FROM,to:[row.email],subject:row.subject,text:row.body})});status=r.ok?'sent':'failed';}catch{status='failed';}
+ await run('UPDATE notifications SET status=? WHERE id=?',status,notificationId);return status;
 }
+export async function notify(uid:string,subject:string,body:string){const u=await one('SELECT email FROM users WHERE id=?',uid);if(!u)return;const notificationId=id();await run('INSERT INTO notifications VALUES(?,?,?,?,?,?)',notificationId,uid,subject,body,'inactive',now());await deliverNotification(notificationId);}
 export async function authFetch(path:string,body:any,token?:string){const c=config();if(!c.SUPABASE_URL||!c.SUPABASE_PUBLISHABLE_KEY)fail(503,'E-mailové přihlášení momentálně není dostupné.');const r=await fetch(c.SUPABASE_URL+'/auth/v1'+path,{method:path==='/user'?'PUT':'POST',headers:{apikey:c.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const d=await r.json() as any;if(!r.ok)fail(r.status>=500?502:400,d.msg||d.error_description||d.message||'Požadavek se nepodařilo dokončit.');return d;}
 export async function setSession(d:any){const c=await cookies();for(const [name,value] of [['pa_access',d.access_token],['pa_refresh',d.refresh_token]])if(value)c.set(name,value,{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:name==='pa_access'?3600:60*60*24*30});}
