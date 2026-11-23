@@ -1,12 +1,45 @@
 <!doctype html>
-<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Potvrďte svůj e-mail | Podporao</title></head>
-<body style="margin:0;background:#fbf7f1;color:#153d26;font-family:Arial,sans-serif;line-height:1.6">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e7e0d7;border-radius:20px"><tr><td style="padding:32px">
-<p style="font-size:26px;font-weight:bold;margin:0 0 24px">podporao</p>
-<h1 style="font-size:27px;line-height:1.25">Potvrďte svůj e-mail</h1><p>Děkujeme za registraci na Podporao. Potvrďte svou e-mailovou adresu a dokončete založení účtu.</p>
-<p style="margin:28px 0"><a href="{{ .SiteURL }}/potvrzeni?token_hash={{ .TokenHash }}&amp;type=signup" style="display:inline-block;background:#098631;color:#ffffff;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:bold">Potvrdit e-mail</a></p>
-<p style="font-size:14px;color:#545b54">Pokud jste o tuto akci nežádali, e-mail ignorujte. Nikomu nepřeposílejte tento odkaz ani své heslo.</p>
-<p style="font-size:14px">Potřebujete pomoc? <a href="mailto:info@podporao.cz" style="color:#076f2a">info@podporao.cz</a></p>
-<hr style="border:0;border-top:1px solid #e7e0d7"><p style="font-size:12px;color:#656a65">Podporao — prostor pro nápady a dobrovolnou podporu jejich autorů.</p>
-</td></tr></table></td></tr></table></body></html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vítejte na Podporao | Podporao.cz</title>
+</head>
+<body style="margin:0;padding:0;background:#fcf9f6;color:#172017;font-family:Arial,Helvetica,sans-serif;">
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">Potvrďte e-mail a dokončete založení účtu na Podporao.cz.</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fcf9f6">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <!--[if mso]><table role="presentation" width="560" cellspacing="0" cellpadding="0"><tr><td><![endif]-->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
+          <tr>
+            <td bgcolor="#092b13" style="padding:21px 24px;border-radius:20px 20px 0 0;">
+              <a href="https://podporao.cz/" style="color:#ffffff;text-decoration:none;font-size:25px;line-height:1.2;font-weight:700;letter-spacing:-.7px;">podporao<span style="color:#f5bf9e;">.cz</span></a>
+            </td>
+          </tr>
+          <tr>
+            <td bgcolor="#ffffff" style="padding:28px 24px;border:1px solid #ded8d2;border-top:0;border-radius:0 0 20px 20px;">
+              <h1 style="margin:0 0 12px;color:#092b13;font-size:29px;line-height:1.2;letter-spacing:-.6px;">Potvrďte svůj e-mail</h1>
+              <p style="margin:0 0 24px;color:#333d34;font-size:16px;line-height:1.6;">Děkujeme, že se přidáváte na Podporao. Jedním kliknutím ověříte svou e-mailovou adresu a dokončíte založení účtu.</p>
+              <table role="presentation" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td bgcolor="#12643a" style="border-radius:11px;">
+                    <a href="{{ .SiteURL }}/potvrzeni?token_hash={{ .TokenHash }}&amp;type=signup" style="display:inline-block;padding:13px 22px;border:1px solid #12643a;border-radius:11px;color:#ffffff;font-size:16px;line-height:20px;font-weight:700;text-decoration:none;">Potvrdit e-mail</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;padding:13px 15px;border-radius:10px;background:#fce9dc;color:#493b32;font-size:14px;line-height:1.55;">Pokud jste si účet nezakládali, můžete tuto zprávu ignorovat.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:19px 8px 0;color:#5f635d;font-size:14px;line-height:1.6;">
+              Potřebujete pomoc? <a href="mailto:info@podporao.cz" style="color:#12643a;text-decoration:underline;">info@podporao.cz</a>
+            </td>
+          </tr>
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
