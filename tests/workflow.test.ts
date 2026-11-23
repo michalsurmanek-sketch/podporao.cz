@@ -8,6 +8,8 @@ async function call(path:string,method='GET',body?:any,as?:string,raw?:Uint8Arra
 test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a ochrana dat',async()=>{
  assert.equal((await call('my')).status,401);await call('me','GET',undefined,'alice');await call('me','GET',undefined,'bob');await call('me','GET',undefined,'admin');database.prepare("UPDATE users SET role='admin' WHERE id='supabase:admin'").run();
  assert.equal((await call('admin/projects','GET',undefined,'alice')).status,403);
+ assert.equal((await call('me','PATCH',{name:'Alice',ico:'27074359'},'alice')).status,400);
+ assert.equal((await call('me','PATCH',{name:'Alice',ico:'27074358'},'alice')).status,200);
  assert.equal((await call('my','POST',{...blank,title:'Cizí původ'},'alice',undefined,'https://evil.test')).status,403);
  const file=await call('uploads','POST',undefined,'alice',new Uint8Array(PNG.sync.write(new PNG({width:1,height:1}))));assert.equal(file.status,201);
  const data={...blank,title:'Skutečný test projektu',summary:'Dostatečně dlouhé představení projektu.',description:'Toto je delší popis testovacího projektu pro ověření schvalování a veřejné verze.',purpose:'Podpora dalšího vývoje a provozu.',image:file.data.url,account:'19-2000145399/0800',recipient:'Testovací příjemce'};
@@ -29,7 +31,11 @@ test('Dva autoři, anonymní návštěvník a správce: celý životní cyklus a
  detail=await call('my/'+pid,'GET',undefined,'alice');version=detail.data.project.version;
  assert.equal((await call('my/'+pid,'PATCH',{version,data:{...data,recipient:'Nový příjemce'}},'alice')).status,200);
  assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,409); // recipient freezes support
- assert.equal((await call('projects/'+slug)).data.project.recipient,data.recipient); // public snapshot preserved
+ const awaitingPaymentApproval=(await call('projects/'+slug)).data.project;
+ assert.equal(awaitingPaymentApproval.title,data.title);
+ assert.equal(awaitingPaymentApproval.paymentEnabled,false);
+ assert.equal(awaitingPaymentApproval.recipient,undefined);
+ assert.equal(awaitingPaymentApproval.account,undefined);
  await call('my/'+pid+'/submit','POST',{},'alice');adminProject=(await call('my/'+pid,'GET',undefined,'alice')).data.project;assert.equal((await call('admin/projects','POST',{id:pid,action:'approve',version:adminProject.version},'admin')).status,200);assert.equal((await call('projects/'+pid+'/qr','POST',{})).status,200);
  assert.equal((await call('reports','POST',{project:pid,reason:'Podezřelý obsah pro test moderace.'})).status,200);
  const reports=await call('admin/reports','GET',undefined,'admin');assert.equal(reports.data.reports.length,1);assert.equal((await call('admin/reports','POST',{id:reports.data.reports[0].id,status:'resolved',note:'Zkontrolováno'},'admin')).status,200);

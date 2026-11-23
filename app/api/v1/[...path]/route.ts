@@ -21,8 +21,8 @@ async function handler(req:Request){try{
   if(key==='session'){if(b.access_token&&b.refresh_token){const c=config();if(!c.SUPABASE_URL||!c.SUPABASE_PUBLISHABLE_KEY)fail(503,'Přihlášení není připojené.');const check=await fetch(c.SUPABASE_URL+'/auth/v1/user',{headers:{apikey:c.SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+String(b.access_token)}});if(!check.ok)fail(401,'Ověřovací odkaz již není platný.');const verified=await check.json() as any;if(!verified.email_confirmed_at)fail(403,'E-mail není ověřený.');await setSession(b);return json({ok:true});}if(!b.token_hash||!['email','signup','recovery'].includes(b.type))fail(400,'Neplatný ověřovací odkaz.');const d=await authFetch('/verify',{token_hash:b.token_hash,type:b.type});await setSession(d);return json({ok:true});}
   if(key==='password'){const c=await cookies(),token=c.get('pa_access')?.value;if(!token)fail(401,'Otevřete platný odkaz pro obnovu hesla.');if(typeof b.password!=='string'||b.password.length<12)fail(400,'Heslo musí mít alespoň 12 znaků.');await authFetch('/user',{password:b.password},token);return json({ok:true});}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email||''))fail(400,'Zadejte platný e-mail.');
-  if(key==='resend'){await rate('resend:'+ip+':'+String(b.email).toLowerCase(),3,3600);await authFetch('/resend',{type:'signup',email:b.email,email_redirect_to:publicOrigin+'/potvrzeni'});return json({message:'Pokud účet čeká na ověření, byl odeslán nový potvrzovací e-mail.'});}
-  if(key==='recover'){await authFetch('/recover',{email:b.email,redirect_to:publicOrigin+'/obnova-hesla'});return json({message:'Pokud účet existuje, přijde vám e-mail s odkazem pro obnovu.'});}
+  if(key==='resend'){await rate('resend:'+ip+':'+String(b.email).toLowerCase(),3,3600);await authFetch('/resend?redirect_to='+encodeURIComponent(publicOrigin+'/potvrzeni'),{type:'signup',email:b.email});return json({message:'Pokud účet čeká na ověření, byl odeslán nový potvrzovací e-mail.'});}
+  if(key==='recover'){await authFetch('/recover?redirect_to='+encodeURIComponent(publicOrigin+'/obnova-hesla'),{email:b.email});return json({message:'Pokud účet existuje, přijde vám e-mail s odkazem pro obnovu.'});}
   if(typeof b.password!=='string'||b.password.length<12)fail(400,'Heslo musí mít alespoň 12 znaků.');
   if(key==='signup'){if(!b.consent)fail(400,'Pro registraci je nutný souhlas s podmínkami.');const d=await authFetch('/signup?redirect_to='+encodeURIComponent(publicOrigin+'/potvrzeni'),{email:b.email,password:b.password,data:{name:String(b.name||'Nový autor').slice(0,100)}});if(d.access_token&&d.refresh_token&&d.user?.email_confirmed_at){await setSession(d);return json({ok:true});}return json({message:'Registraci potvrďte odkazem v e-mailu.'});}
   if(key==='login'){const d=await authFetch('/token?grant_type=password',{email:b.email,password:b.password});if(!d.user?.email_confirmed_at)fail(403,'Nejprve ověřte e-mail.');await setSession(d);return json({ok:true});}
@@ -30,7 +30,7 @@ async function handler(req:Request){try{
  }
  if(root==='me'){
   const u=await user(method!=='GET');if(method==='GET')return json({user:u});if(!u)fail(401,'Přihlaste se.');
-  if(method==='PATCH'){const b=await body();const name=String(b.name||'').trim().slice(0,100);if(!name)fail(400,'Vyplňte jméno.');const ico=String(b.ico||'').trim();if(ico&&!/^\d{8}$/.test(ico))fail(400,'IČO musí mít 8 číslic.');const avatar=image(b.avatar);if(avatar){const file=await one('SELECT owner FROM uploads WHERE id=?',avatar.split('/').pop());if(file?.owner!==u.id)fail(403,'Cizí fotografie.');}await run('UPDATE users SET name=?,bio=?,website=?,ico=?,avatar=? WHERE id=?',name,String(b.bio||'').slice(0,2000),web(b.website),ico,avatar,u.id);return json({ok:true});}
+  if(method==='PATCH'){const b=await body();const name=String(b.name||'').trim().slice(0,100);if(!name)fail(400,'Vyplňte jméno.');const ico=String(b.ico||'').trim();if(ico&&ico!==u.ico&&!validIco(ico))fail(400,'Zadejte platné osmimístné IČO.');const avatar=image(b.avatar);if(avatar){const file=await one('SELECT owner FROM uploads WHERE id=?',avatar.split('/').pop());if(file?.owner!==u.id)fail(403,'Cizí fotografie.');}await run('UPDATE users SET name=?,bio=?,website=?,ico=?,avatar=? WHERE id=?',name,String(b.bio||'').slice(0,2000),web(b.website),ico,avatar,u.id);return json({ok:true});}
  }
  if(root==='authors'&&method==='GET'){const a=await one('SELECT id,name,bio,website,ico,avatar FROM users WHERE id=? AND blocked=0',decodeURIComponent(key));if(!a)fail(404,'Autor neexistuje.');const projects=await all("SELECT id,slug,published,featured,status,payment_enabled FROM projects WHERE owner=? AND published IS NOT NULL AND status IN ('published','pending','changes','rejected')",a.id);return json({author:a,projects:projects.map(publicProject)});}
  if(root==='projects'&&method==='GET'){
@@ -117,5 +117,15 @@ async function handler(req:Request){try{
  }catch(e){if(e instanceof HttpError)return json({error:e.message},e.status);if(e instanceof Error&&/Částka|částku|symbol|IBAN|účtu|příjemce/.test(e.message))return json({error:e.message},400);console.error('API failure',e instanceof Error?e.message:'unknown');return json({error:'Požadavek se nepodařilo dokončit. Zkuste to znovu.'},500);}}
 async function readLimited(req:Request,limit:number){const reader=req.body?.getReader();if(!reader)return new Uint8Array();const chunks:Uint8Array[]=[];let size=0;for(;;){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>limit){await reader.cancel();fail(413,'Požadavek je příliš velký.');}chunks.push(value)}const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}return bytes;}
 function slugify(s:string){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,65)||'projekt';}
-function publicProject(p:any){const d=JSON.parse(p.published);return {...d,id:p.id,slug:p.slug,featured:p.featured,paymentEnabled:!!p.payment_enabled};}
+function validIco(ico:string){
+ if(!/^\d{8}$/.test(ico))return false;
+ const digits=Array.from(ico,Number);
+ const total=digits.slice(0,7).reduce((sum,digit,index)=>sum+digit*(8-index),0);
+ return digits[7]===(11-total%11)%10;
+}
+function publicProject(p:any){
+ const {account,recipient,vs,...project}=JSON.parse(p.published);
+ const paymentEnabled=Boolean(p.payment_enabled);
+ return {...project,...(paymentEnabled?{account,recipient,vs}:{}),id:p.id,slug:p.slug,featured:p.featured,paymentEnabled};
+}
 export {handler as GET,handler as POST,handler as PATCH};
