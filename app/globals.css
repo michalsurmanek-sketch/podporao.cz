@@ -86,7 +86,7 @@
   padding-top: 4px;
   padding-bottom: 20px;
 }
-.site-footer-navigation h2 { margin: 0 0 4px; font-size: 17px; }
+.site-footer-navigation h2 { margin: 0 0 4px; color: #b83b12; font-size: 17px; }
 .site-footer-navigation a {
   display: flex;
   align-items: center;
