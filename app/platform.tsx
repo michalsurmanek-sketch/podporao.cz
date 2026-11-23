@@ -20,11 +20,58 @@ export default function Platform(){const [user,setUser]=useState<User|null>(null
  useEffect(()=>{refresh()},[refresh]);useEffect(()=>{setMenu(false);window.scrollTo(0,0)},[path]);useEffect(()=>{if(notice){const t=setTimeout(()=>setNotice(''),6000);return()=>clearTimeout(t)}},[notice]);
  const ctx={user,config,ready,refresh,toast:setNotice};let view;
  if(path==='/'||path==='/nahled')view=<Home/>;else if(path==='/projekty')view=<Catalog/>;else if(path.startsWith('/projekt/'))view=<Detail slug={path.split('/')[2]}/>;else if(path.startsWith('/autor/'))view=<Author uid={decodeURIComponent(path.slice(7))}/>;else if(path.startsWith('/ucet'))view=<Account/>;else if(path.startsWith('/administrace'))view=<Admin/>;else if(['/prihlaseni','/registrace','/zapomenute-heslo','/obnova-hesla','/potvrzeni'].includes(path))view=<Auth/>;else if(['/jak-to-funguje','/faq','/kontakt','/podminky','/soukromi'].includes(path))view=<Info/>;else view=<NotFound/>;
- return <Context.Provider value={ctx}><a href="#main" className="skip">Přejít k obsahu</a><header className="header"><div className="wrap nav"><Logo/><nav className={menu?'navlinks open':'navlinks'}><Link href="/projekty">Projekty</Link><Link href="/jak-to-funguje">Jak to funguje</Link></nav><div className="navright"><Link href={user?'/ucet':'/prihlaseni'} className="login-link">{user?'Můj účet':'Přihlásit se'}</Link><Link className="btn small" href="/ucet/novy"><Plus size={17}/> Přidat projekt</Link><button className="iconbtn mobile-menu" aria-label={menu?'Zavřít menu':'Otevřít menu'} aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div></header><main id="main" tabIndex={-1}>{view}</main><footer className="footer"><div className="wrap footer-line"><Logo/><nav aria-label="Odkazy v patičce"><Link href="/projekty">Projekty</Link><Link href="/jak-to-funguje">Jak to funguje</Link><Link href="/ucet/novy">Přidat projekt</Link><Link href="/faq">Časté otázky</Link><Link href="/kontakt">Kontakt</Link></nav><p>Podporao.cz – {config.content.footer}</p></div><div className="wrap footer-legal"><Link href="/podminky">Podmínky používání</Link><Link href="/soukromi">Ochrana soukromí</Link></div></footer>{notice&&<div className="toast" role="status"><AlertCircle size={19}/>{notice}<button className="iconbtn" aria-label="Zavřít zprávu" onClick={()=>setNotice('')}><X size={17}/></button></div>}</Context.Provider>
+ return <Context.Provider value={ctx}><a href="#main" className="skip">Přejít k obsahu</a><header className="header"><div className="wrap nav"><Logo/><nav className={menu?'navlinks open':'navlinks'}><Link href="/projekty">Projekty</Link><Link href="/jak-to-funguje">Jak to funguje</Link></nav><div className="navright"><Link href={user?'/ucet':'/prihlaseni'} className="login-link">{user?'Můj účet':'Přihlásit se'}</Link><Link className="btn small" href="/ucet/novy"><Plus size={17}/> Přidat projekt</Link><button className="iconbtn mobile-menu" aria-label={menu?'Zavřít menu':'Otevřít menu'} aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></div></header><main id="main" tabIndex={-1}>{view}</main><SiteFooter/>{notice&&<div className="toast" role="status"><AlertCircle size={19}/>{notice}<button className="iconbtn" aria-label="Zavřít zprávu" onClick={()=>setNotice('')}><X size={17}/></button></div>}</Context.Provider>
 }
 function Trust(){return <div className="trust"><span><Users/>Přímo autorům</span><span><Layers/>Částku volíte vy</span><span><Leaf/>Bez slibů výnosu</span></div>}
 function Steps(){return <section className="steps-section wrap"><h2>Jak podpora<br/><span className="underlined">funguje?</span></h2><div className="steps">{[[Search,'Vyberte projekt','Objevte nápady a iniciativy, které vás osloví.'],[Coins,'Zvolte částku','Podpořte libovolnou částkou, která vám dává smysl.'],[QrCode,'Podpořte přímo autora','Příspěvek odešlete přímo na účet autora projektu pomocí QR kódu.']].map(([Icon,t,b]:any,i:number)=><div className="step" key={t}><span className="step-icon"><Icon size={27}/></span><h3>{i+1}. {t}</h3><p>{b}</p>{i<2&&<ArrowRight className="step-connector" size={22}/>}</div>)}</div></section>}
-function CTA(){const {config}=useApp();return <section className="wrap"><div className="cta"><div><h2>{config.content.cta_title}</h2><p>{config.content.cta_subtitle}</p></div><Link className="btn cream" href="/ucet/novy"><Plus size={20}/>Přidat projekt</Link><div className="cta-plant" aria-hidden="true"><Leaf/><Leaf/><Sprout/></div></div></section>}
+function SiteFooter(){
+ const {config,user}=useApp();
+ const {footer,contact_email,operator}=config.content;
+ return <footer className="site-footer wrap" aria-label="Patička Podporao.cz">
+  <div className="site-footer-intro">
+   <Logo/>
+   <p>{footer}</p>
+   {contact_email&&<a className="site-footer-email" href={'mailto:'+contact_email}>
+    <Mail size={21} aria-hidden="true"/>{contact_email}
+   </a>}
+  </div>
+  <nav className="site-footer-navigation" aria-label="Odkazy v patičce">
+   <div>
+    <h2>Pro návštěvníky</h2>
+    <Link href="/projekty">Projekty</Link>
+    <Link href="/jak-to-funguje">Jak to funguje</Link>
+    <Link href="/faq">Časté otázky</Link>
+   </div>
+   <div>
+    <h2>Pro autory</h2>
+    <Link href="/ucet/novy">Přidat projekt</Link>
+    <Link href={user?'/ucet':'/prihlaseni'}>{user?'Můj účet':'Přihlásit se'}</Link>
+    <Link href="/kontakt">Kontakt</Link>
+   </div>
+  </nav>
+  <details className="site-footer-operator">
+   <summary>Provozovatel<ChevronRight size={20} aria-hidden="true"/></summary>
+   <p className="preline">{operator}</p>
+  </details>
+  <div className="site-footer-bottom">
+   <nav aria-label="Právní informace">
+    <Link href="/podminky">Podmínky používání</Link>
+    <Link href="/soukromi">Ochrana soukromí</Link>
+   </nav>
+   <small>© 2026 Podporao.cz</small>
+  </div>
+ </footer>;
+}
+function CTA(){
+ const {config}=useApp();
+ return <section className="wrap footer-invite" aria-labelledby="footer-invite-title">
+  <div className="footer-invite-heading">
+   <Sprout size={60} aria-hidden="true"/>
+   <div><h2 id="footer-invite-title">{config.content.cta_title}</h2><p>{config.content.cta_subtitle}</p></div>
+  </div>
+  <Link className="btn full" href="/ucet/novy"><Plus size={20} aria-hidden="true"/>Přidat projekt</Link>
+ </section>;
+}
 const LAUNCH_AT=Date.parse('2026-12-15T00:00:00+01:00');
 function Home(){
  const [preview,setPreview]=useState(false),[time,setTime]=useState<number|null>(null);
